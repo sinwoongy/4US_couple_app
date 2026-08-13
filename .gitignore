@@ -6,10 +6,10 @@ dist
 .DS_Store
 
 # Next.js
-calendar couple/.next
-calendar couple/node_modules
-calendar couple/.env.local
-calendar couple/tsconfig.tsbuildinfo
+calendar-couple/.next
+calendar-couple/node_modules
+calendar-couple/.env.local
+calendar-couple/tsconfig.tsbuildinfo
 
 # Vite prototype
 src/node_modules

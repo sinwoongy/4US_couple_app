@@ -36,11 +36,11 @@
 
 ## 2. 메인 작업 디렉토리
 
-**`calendar couple/`** 가 메인 프로젝트입니다. `4US_Minji/` 루트의 Vite 프로젝트는 지도 기능 프로토타입으로만 보존되어 있습니다.
+**`calendar-couple/`** 가 메인 프로젝트입니다. `4US_Minji/` 루트의 Vite 프로젝트는 지도 기능 프로토타입으로만 보존되어 있습니다.
 
 ```
 4US_Minji/
-├── calendar couple/        ← ★ 메인 프로젝트 (Next.js)
+├── calendar-couple/        ← ★ 메인 프로젝트 (Next.js)
 │   ├── app/
 │   │   ├── globals.css     # Tailwind utilities + Leaflet 라벨 CSS + 슬라이드인 애니메이션
 │   │   ├── layout.tsx
@@ -104,7 +104,7 @@ trips: id, couple_id (FK), sido, sido_code, sigungu, sigungu_code,
 - TypeScript strict 모드
 - 모든 컴포넌트 최상단에 `"use client"` 추가 (App Router 기본값이 Server Component)
 - 파일명: PascalCase (컴포넌트), camelCase (유틸·스토어)
-- 경로 alias: `@/*` → 프로젝트 루트 (`calendar couple/`)
+- 경로 alias: `@/*` → 프로젝트 루트 (`calendar-couple/`)
 
 ### 아키텍처 원칙
 - **커플 데이터 격리:** 모든 데이터는 `couple_id` FK로 격리
