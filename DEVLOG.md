@@ -1,209 +1,84 @@
 # 4US 개발 로그
 
 커플 공유 앱 4US의 개발 히스토리를 기록합니다.
+버전 태그는 git tag 기준 (`git tag`, `git checkout v1.0` 으로 롤백 가능).
 
 ---
 
-## [1단계] 프로젝트 초기 설정
+## v1.0 — 첫 배포 (2026-08-13)
 
-**작업 내용**
-- CLAUDE.md 프로젝트 지침 파일 작성 (기술스택, 개발원칙, 디렉토리 구조)
-- REQUIREMENTS.md 요구사항 문서 초안 작성 (F-01 ~ F-07 기능 정의, Firestore 데이터 모델)
-- Vite + React + TypeScript 프로젝트 scaffolding
-- 의존성 설치: `react-leaflet`, `leaflet`, `firebase`, `tailwindcss`
-- `package.json`에 `"type": "module"` 추가 (ESM 경고 해결)
-- `.env.example` Firebase 환경변수 키 목록 작성
-- `.claude/` 개발 워크플로 설정 (commands, agents, skills)
-
-**확정 기술스택**
+### 확정 기술 스택
 | 역할 | 기술 |
 |------|------|
-| 프론트엔드 | React 18 + TypeScript + Vite |
-| 스타일링 | Tailwind CSS |
-| 지도 | Leaflet + react-leaflet |
-| 행정구역 데이터 | GeoJSON (통계청, southkorea-maps) |
-| 백엔드 (예정) | Firebase Auth + Firestore + Storage |
+| 프레임워크 | Next.js 16 (App Router, Turbopack) |
+| 언어 | TypeScript (strict) |
+| 스타일링 | Tailwind CSS v4 + Pure CSS 혼용 |
+| DB / 실시간 | Supabase (PostgreSQL + Realtime) |
+| 지도 | Leaflet + react-leaflet (SSR: false) |
+| 지도 데이터 | GeoJSON (southkorea-maps, 통계청 2012) |
+| 폴리곤 합치기 | @turf/union v7 |
+| 호스팅 | Vercel (GitHub 연동, main 푸시 시 자동 배포) |
+
+### 구현된 기능
+
+#### 캘린더 탭
+- 커플 코드 `4us-minji` 고정 (환경변수 `NEXT_PUBLIC_COUPLE_CODE`)
+- 기념일·파트너 이름 저장 (couples 테이블)
+- 일정 추가·수정·삭제 (events 테이블)
+- Supabase Realtime `postgres_changes` 실시간 동기화
+- localStorage 폴백 (Supabase 환경변수 없을 때)
+
+#### 여행 지도 탭
+- 한국 시·도 드릴다운 → 시·군·구 선택
+- 방문 횟수별 인디고 블루 색상 스케일 (`#FFFFFF` → `#4F46E5`)
+- 지역명 상시 라벨 (3회 이상 방문 시 흰색 텍스트)
+- 일반 시(市) 구(區) 폴리곤 통합 — `mergeSimpleCityDistricts()` (@turf/union v7)
+  - 대상: 수원, 성남, 안양, 부천, 안산, 고양, 용인, 청주, 천안, 전주, 포항, 창원
+  - 광역시(서울·부산 등) 구는 개별 유지
+- 방문 횟수 중복 방지 — `Set("dateFrom~dateTo")` 기준 고유 기간 집계
+- 지도 이동 범위 제한 (`maxBounds`, `minZoom: 7`)
+- 여행 기록 추가·수정·삭제 (trips 테이블)
+  - 날짜/기간, 장소, 먹은 것, 소감, 별점(1~5), 태그
+  - 장소 클릭 → 네이버 지도 새 탭 검색
+- Supabase Realtime 동기화 + 뮤테이션 후 즉시 재조회 폴백
+
+### 주요 트러블슈팅
+- **Tailwind v4 Turbopack 미지원**: PostCSS 플러그인 미처리로 유틸리티 클래스 미적용 → `.map-*` CSS 클래스 직접 정의로 해결
+- **폴더명 공백 오류**: `calendar couple` → `calendar-couple` 이름 변경 (Vercel Serverless Function 경로 공백 불허)
+- **Supabase URL 이중 경로**: 환경변수에 `/rest/v1` 포함 시 요청 URL 중복 → URL만 입력하도록 수정
+- **couple 행 자동 생성**: `getCoupleId` 단순 조회에서 `ensureAndGetCoupleId`로 교체 (없으면 생성)
+
+### Supabase 스키마
+- `couples`: id, invite_code, partner_one_name, partner_two_name, anniversary_date
+- `events`: id, couple_id, title, date, note, color, all_day, start_time, end_time
+- `trips`: id, couple_id, sido, sido_code, sigungu, sigungu_code, date_from, date_to, places, food, impression, rating, tags, created_by
+- RLS: 전체 공개 정책 (추후 Auth 연동 시 강화 예정)
+- Realtime: 세 테이블 모두 `supabase_realtime` publication 등록
 
 ---
 
-## [2단계] 여행 리스트 탭 — 기본 구현
+## 미구현 / 다음 작업 예정
 
-**작업 내용**
-
-### GeoJSON 데이터 준비
-- `public/geojson/sido.json` — 전국 17개 시·도 GeoJSON 다운로드
-- `public/geojson/sigungu.json` — 전국 251개 시·군·구 GeoJSON 다운로드
-- 출처: github.com/southkorea/southkorea-maps (통계청 2012년 기준)
-
-### 타입 및 데이터
-- `src/types/trip.ts` — `Trip` 인터페이스 정의
-  - 필드: id, sido, sidoCode, sigungu, sigunguCode, dateFrom, dateTo, places, food, impression, rating, tags, photos, createdBy, createdAt
-- `src/data/mockTrips.ts` — 더미 여행 데이터 7건 (서울, 경기, 제주, 부산)
-- `src/hooks/useTrips.ts` — 여행 데이터 관리 훅
-
-### 지도 컴포넌트 (`src/components/KoreaMap/KoreaMap.tsx`)
-- 흰색 배경 지도 (타일 레이어 없음, OpenStreetMap 미사용)
-- 시·도 레벨 → 클릭 시 해당 도의 시·군·구로 드릴다운
-- 방문 횟수별 인디고 블루 색상 스케일 (`#FFFFFF` ~ `#4F46E5`)
-- 호버 시 툴팁 표시
-- 전국 지도로 돌아가기 버튼
-- 방문 횟수 범례 (우하단)
-- 시·도/시·군·구 코드 연결: sigunguCode 앞 2자리 = sidoCode
-
-### 기록 패널 (`src/components/RecordsPanel/`)
-- `RecordsPanel.tsx` — 우측 슬라이드인 패널 (w-96, animate-slide-in)
-- `TripCard.tsx` — 개별 여행 기록 카드 (날짜, 별점, 장소, 음식, 소감, 태그)
-- `AddTripModal.tsx` — 기록 추가 모달 (날짜, 장소, 음식, 소감, 별점, 태그)
-  - 프리셋 태그 10개 + 커스텀 태그 입력 지원
-
-### 페이지
-- `src/pages/TravelListPage.tsx` — 지도 + 패널 통합 페이지
-
-### 스타일 (`src/index.css`)
-- Pretendard 폰트 (CDN)
-- 커스텀 툴팁 스타일 `.leaflet-tooltip-custom`
-- 슬라이드인 애니메이션 `@keyframes slide-in`
+- [ ] Supabase Auth (구글 로그인) + RLS 강화
+- [ ] 사진 업로드 (Supabase Storage)
+- [ ] 후기 작성 기능
+- [ ] 모바일 반응형 대응
+- [ ] PWA 설정 (홈 화면 아이콘, 주소창 없이 앱처럼 실행)
 
 ---
 
-## [3단계] 지도 UX 개선
+## 롤백 방법
 
-### 지역명 상시 라벨 표시
-- 시·도, 시·군·구 이름이 호버하지 않아도 지도 위에 항상 표시
-- Leaflet `bindTooltip({ permanent: true, direction: 'center' })` 활용
-- 방문 3회 이상(짙은 인디고) 지역은 텍스트 흰색으로 자동 전환
-- 호버 시 방문 횟수 추가 표시
-- CSS 클래스 `.leaflet-label-sido`, `.leaflet-label-sigungu`
+```bash
+# 버전 목록 확인
+git tag
 
-### 라벨 오버플로 수정 (당진, 서산 등)
-- Leaflet 기본 `white-space: nowrap` 오버라이드 (specificity 문제)
-- 선택자를 `.leaflet-tooltip.leaflet-label-sido`로 강화
-- `white-space: normal !important`, `max-width: 64~80px`, `word-break: keep-all` 적용
+# 특정 버전 코드 확인 (파일 변경 없이 조회만)
+git show v1.0
 
-### 지도 이동 범위 제한
-- `maxBounds` 설정으로 한반도 밖으로 드래그 불가
-- `maxBoundsViscosity: 1.0` — 경계에서 딱 멈춤
-- `minZoom: 7` — 전국 뷰보다 더 축소 불가
-- `SetMaxBounds` 컴포넌트 — 도 선택 시 해당 도 bounds로 동적 교체, 전국 뷰 복귀 시 원복
-  - 이전: `window.L` 사용 (Vite ESM 환경에서 undefined) → `import L from 'leaflet'`으로 수정
+# 특정 버전으로 롤백
+git checkout v1.0
 
-### 도 클릭 시 줌 이동 수정
-- `FitBoundsOnSelect`에서 `window.L` → `import L` 직접 사용으로 수정
-- 클릭한 도의 GeoJSON bounds를 한반도 범위 내로 clamp 후 `fitBounds` 호출
-
----
-
-## [4단계] 날짜 → 기간 선택 기능
-
-**배경**: 같은 여행 중 여러 지역에 기록을 남기면 방문 횟수가 중복 카운트되는 문제
-
-**변경 사항**
-- `Trip` 타입: `date: string` → `dateFrom: string`, `dateTo: string`
-- `AddTripModal`: "당일 / 기간 선택" 토글 버튼 추가
-  - 당일 선택 시: 날짜 하나
-  - 기간 선택 시: 시작일 ~ 종료일 두 개, `min` 제약으로 역순 방지
-- `TripCard`: 당일이면 날짜 하나, 기간이면 `YYYY-MM-DD ~ YYYY-MM-DD` 표시
-- `useTrips`: 방문 횟수를 **고유 기간 수**로 카운트
-  - `countUniquePeriods()` — `Set("dateFrom~dateTo")` 기준
-  - 동일 기간 + 동일 지역 = 1회 방문
-  - 시·도 / 시·군·구 모두 동일 로직 적용
-
----
-
-## [5단계] 기록 수정 및 삭제 기능
-
-**변경 사항**
-
-### `useTrips.ts`
-- `updateTrip(id, updates)` 추가
-- `deleteTrip(id)` 추가
-
-### `AddTripModal.tsx`
-- 편집 모드 지원: `initialTrip?: Trip` prop
-- 편집 모드 시 기존 값 prefill, 제목/버튼 텍스트 변경 ("수정 저장하기")
-- `onUpdate?: (id, trip) => void` 콜백 추가
-
-### `TripCard.tsx`
-- 우측 상단에 수정(연필) / 삭제(휴지통) 아이콘 버튼 추가
-- 삭제: 아이콘 클릭 → 카드 내 "삭제 / 취소" 인라인 확인 (실수 방지)
-
-### `RecordsPanel.tsx`
-- `editingTrip: Trip | null` 상태 관리
-- 수정 모달: `AddTripModal`을 `initialTrip` prop과 함께 열기
-- `onUpdate`, `onDelete` props 추가
-
-### `TravelListPage.tsx`
-- `updateTrip`, `deleteTrip` 핸들러 연결
-
----
-
-## [6단계] 네이버 지도 연동
-
-**배경**: 기록된 장소를 실제 지도에서 확인하고 싶은 니즈
-
-**방식**: URL scheme 활용 (API 키 불필요)
+# 최신으로 돌아오기
+git checkout main
 ```
-https://map.naver.com/v5/search/{장소명}
-```
-
-**변경 사항**
-- `TripCard.tsx`: 장소 목록을 텍스트 → 클릭 가능한 버튼으로 변경
-- 클릭 시 `window.open(naverUrl, '_blank')` — 새 탭으로 네이버 지도 검색 결과 열기
-
----
-
-## 현재 구현 상태
-
-### 완료된 기능
-- [x] 한국 시·도 / 시·군·구 지도 (드릴다운)
-- [x] 방문 지역 인디고 블루 색칠 (횟수별 농도)
-- [x] 지역명 상시 라벨
-- [x] 여행 기록 추가 (날짜/기간, 장소, 음식, 소감, 별점, 태그)
-- [x] 여행 기록 수정 / 삭제
-- [x] 방문 횟수 중복 카운트 방지 (기간 기준 고유 집계)
-- [x] 네이버 지도 연동 (장소 클릭 → 새 탭)
-- [x] 지도 이동 범위 제한
-
-### 미구현 (REQUIREMENTS.md 기준 우선순위)
-- [ ] F-01: Firebase Auth 로그인 (구글 로그인)
-- [ ] F-02: 커플 페어링 (초대 코드)
-- [ ] F-03: Firebase Firestore 연동 (현재 메모리 상태만)
-- [ ] F-04: 사진 업로드 (Firebase Storage)
-- [ ] F-06: 캘린더 / 일정 공유
-- [ ] F-07: 홈 대시보드
-- [x] 광역시 외 일반 시(市)의 구(區) 통합 렌더링 (→ [7단계])
-
----
-
-## [7단계] 일반 시(市) 구(區) 통합 렌더링
-
-**배경**: 성남시, 수원시 등 일반 도 소속 시에도 구가 있어 GeoJSON 상 여러 폴리곤으로 분리되어 있었음. 광역시(서울, 부산 등)의 구는 개별 클릭 단위로 유지.
-
-**방법**: `@turf/union` v7으로 폴리곤 합치기
-
-- `src/utils/mergeSimpleCities.ts` 신규 작성
-  - 광역시 sido 코드(11, 21~26, 29)는 개별 구 유지
-  - 나머지 도 지역의 시군구는 코드 앞 4자리로 그룹핑
-  - 같은 그룹 내 2개 이상 = 일반 시의 구들 → `@turf/union`으로 폴리곤 합치기
-  - 합쳐진 시의 name: 구 이름에서 시 이름 추출 (예: "수원시장안구" → "수원시")
-  - 예외 lookup: 포항시(`3701`), 창원시(`3811`) — 구 이름에 시 이름 미포함
-  - synthetic code: 그룹 키 + "0" (예: "31010" for 수원시)
-- `KoreaMap.tsx`: sigungu GeoJSON 로딩 후 `mergeSimpleCityDistricts()` 적용
-
-**대상 시 (12개)**
-수원시, 성남시, 안양시, 부천시, 안산시, 고양시, 용인시, 청주시, 천안시, 전주시, 포항시, 창원시
-
-**부가 수정**: mock 데이터 코드 오류 수정
-- 경기도 sidoCode `41` → `31` (GeoJSON 실제 코드)
-- 마포구 `11440` → `11140`
-- 수원시 `41110` → `31010` (synthetic)
-- 가평군 `41820` → `31370`
-- 해운대구 `21350` → `21090`
-
----
-
-## 알려진 이슈 / TODO
-
-- 현재 데이터는 메모리 상태 (새로고침 시 초기화됨) → Firebase 연동 후 해결
-- 광역시 외 시(예: 성남시)의 구를 하나의 시로 묶어 렌더링하는 기능 미구현
-- 사진 업로드 UI는 있으나 실제 Storage 연동 미완료
