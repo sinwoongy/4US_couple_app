@@ -1,0 +1,38 @@
+const HOLIDAYS_2026: Record<string, string> = {
+  "2026-01-01": "신정",
+  "2026-02-16": "설날 연휴",
+  "2026-02-17": "설날",
+  "2026-02-18": "설날 연휴",
+  "2026-03-01": "삼일절",
+  "2026-03-02": "삼일절 대체휴일",
+  "2026-05-05": "어린이날",
+  "2026-05-24": "부처님오신날",
+  "2026-05-25": "부처님오신날 대체휴일",
+  "2026-06-03": "전국동시지방선거",
+  "2026-06-06": "현충일",
+  "2026-08-15": "광복절",
+  "2026-08-17": "광복절 대체휴일",
+  "2026-09-24": "추석 연휴",
+  "2026-09-25": "추석",
+  "2026-09-26": "추석 연휴",
+  "2026-10-03": "개천절",
+  "2026-10-05": "개천절 대체휴일",
+  "2026-10-09": "한글날",
+  "2026-12-25": "성탄절",
+};
+
+function toDateKey(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getHolidayLabel(value: string | Date) {
+  return HOLIDAYS_2026[toDateKey(value)] ?? "";
+}
+
+export function isHoliday(value: string | Date) {
+  return Boolean(getHolidayLabel(value));
+}

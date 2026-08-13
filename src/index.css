@@ -1,0 +1,98 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Leaflet 기본 타일 제거 및 배경 흰색 */
+.leaflet-container {
+  background: #ffffff !important;
+}
+
+/* 커스텀 툴팁 */
+.leaflet-tooltip-custom {
+  background: white;
+  border: 1px solid #E0E7FF;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: 'Pretendard', sans-serif;
+  font-size: 13px;
+  color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.leaflet-tooltip-custom::before {
+  display: none;
+}
+
+/* 시·도 상시 라벨 */
+.leaflet-tooltip.leaflet-label-sido {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: 'Pretendard', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+  white-space: normal !important;
+  word-break: keep-all;
+  max-width: 80px !important;
+  text-shadow: 0 0 4px rgba(255,255,255,0.8), 0 0 4px rgba(255,255,255,0.8);
+  padding: 0;
+}
+
+.leaflet-tooltip.leaflet-label-sido::before {
+  display: none !important;
+}
+
+/* 시·군·구 상시 라벨 */
+.leaflet-tooltip.leaflet-label-sigungu {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: 'Pretendard', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  white-space: normal !important;
+  word-break: keep-all;
+  max-width: 64px !important;
+  text-shadow: 0 0 3px rgba(255,255,255,0.9), 0 0 3px rgba(255,255,255,0.9);
+  padding: 0;
+}
+
+.leaflet-tooltip.leaflet-label-sigungu::before {
+  display: none !important;
+}
+
+/* 패널 슬라이드 인 애니메이션 */
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out;
+}
+
+/* Leaflet 줌 컨트롤 스타일 */
+.leaflet-control-zoom a {
+  font-family: 'Pretendard', sans-serif !important;
+  color: #6366F1 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  color: #4F46E5 !important;
+}

@@ -1,0 +1,16 @@
+node_modules
+.env
+.env.local
+.env*.local
+dist
+.DS_Store
+
+# Next.js
+calendar couple/.next
+calendar couple/node_modules
+calendar couple/.env.local
+calendar couple/tsconfig.tsbuildinfo
+
+# Vite prototype
+src/node_modules
+node_modules
